@@ -76,7 +76,7 @@ template is in [`claude_desktop_config.example.json`](claude_desktop_config.exam
     "realnex": {
       "command": "node",
       "args": [
-        "C:\path\to\realnex-mcp-connector\dist\index.js"
+        "C:\\path\\to\\realnex-mcp-connector\\dist\\index.js"
       ],
       "env": {
         "REALNEX_TOKEN": "PASTE_YOUR_REALNEX_API_TOKEN_HERE"
