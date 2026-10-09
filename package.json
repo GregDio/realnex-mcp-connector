@@ -1,0 +1,33 @@
+{
+  "name": "realnex-mcp-server",
+  "version": "1.0.0",
+  "description": "Local MCP connector for the RealNex CRM SyncAPI (RealNex SyncAPI Data Facade)",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "realnex-mcp-server": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node -e \"import('fs').then(fs=>fs.cpSync('realnex-api.json','dist/realnex-api.json'))\"",
+    "start": "node dist/index.js",
+    "start:stdio": "MCP_TRANSPORT=stdio node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "dev:stdio": "MCP_TRANSPORT=stdio tsx src/index.ts"
+  },
+  "files": [
+    "dist",
+    "realnex-api.json"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.15.0"
+  },
+  "devDependencies": {
+    "@anthropic-ai/mcpb": "^2.1.2",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
