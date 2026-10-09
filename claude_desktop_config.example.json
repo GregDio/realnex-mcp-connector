@@ -6,6 +6,7 @@
         "C:\\path\\to\\realnex-mcp-connector\\dist\\index.js"
       ],
       "env": {
+        "MCP_TRANSPORT": "stdio",
         "REALNEX_TOKEN": "PASTE_YOUR_REALNEX_API_TOKEN_HERE"
       }
     }
