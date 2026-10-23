@@ -13,6 +13,27 @@ Because the tools are generated from the spec rather than hand-written, the
 server automatically picks up new/changed operations whenever you drop in an
 updated `realnex-api.json` and rebuild — no code changes required.
 
+## Security and maintenance
+
+This connector is shared as a courtesy, **as is**, with no warranty and no
+commitment to provide updates, support or maintenance. Anyone who runs a copy
+is responsible for keeping it secure, including:
+
+- **Keeping Node.js current.** Run a supported, security-patched release
+  (22.x, 24.x or later). Versions 18 and earlier no longer receive security
+  fixes. Update Node when a security release is announced.
+- **Redeploying after security advisories.** If you host your own copy (on
+  Render, for example), rebuild and redeploy it when your host or the Node.js
+  project announces a security fix. Clear the build cache when you do.
+- **Updating dependencies.** Run `npm audit` and `npm update` periodically,
+  then rebuild.
+- **Protecting your credentials.** Use your own RealNex token and your own
+  `MCP_AUTH_TOKEN`. Never share your connector's URL, since it acts with your
+  token. Replace both if either is ever exposed.
+- **Reviewing the code** before using it with your own data.
+
+Updates to this repository are not guaranteed.
+
 ## How it's built
 
 - `src/schema.ts` — resolves OpenAPI `$ref` schemas into self-contained JSON
@@ -38,7 +59,8 @@ updated `realnex-api.json` and rebuild — no code changes required.
 
 ## Prerequisites
 
-- Node.js 18+ (tested with Node 24)
+- A currently supported, security-patched Node.js release (tested with Node
+  24; see [Security and maintenance](#security-and-maintenance))
 - A RealNex account with SyncAPI access, and either:
   - a **bearer token** (JWT) for the SyncAPI, or
   - your RealNex **username/password** (sent as HTTP Basic auth — the spec
