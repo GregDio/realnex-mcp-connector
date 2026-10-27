@@ -113,8 +113,8 @@ share a running instance's URL, since it acts with the token behind it.
    looks empty, use the connector's "Refresh tools list" option.
 
 Free hosting tiers sleep when idle, so the first request after a quiet period
-can take 30–60 seconds. Sessions are held in memory and are re-created
-automatically after a restart.
+can take 30–60 seconds. The HTTP server is stateless — it keeps no sessions,
+so restarts and redeploys never leave a client with a stale connection.
 
 ## Loading it into your desktop app (stdio mode)
 
@@ -176,9 +176,9 @@ matching the RealNex schema for that operation.
 - **Desktop app shows the server timing out / failing to connect** — make
   sure `MCP_TRANSPORT` is set to `stdio` in the config. Without it the server
   starts in HTTP mode.
-- **Remote connector says "Session not found"** — the host restarted and
-  dropped its in-memory sessions. Reconnect or refresh the connector; clients
-  re-initialize automatically.
+- **Opening the connector URL in a browser shows "Method not allowed"** — expected.
+  The endpoint only accepts POST requests from an MCP client; use `/health`
+  to check that the service is up.
 - **A tool call 404s** — double check the `*Key` GUID you passed; RealNex
   keys are UUIDs.
 

@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { randomUUID } from "node:crypto";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { loadSpec, parseOperations, type Operation } from "./spec.js";
 import { operationToTool } from "./tools.js";
@@ -111,8 +110,6 @@ async function startHttp() {
 
   const mcpPath = MCP_AUTH_TOKEN ? `/mcp/${MCP_AUTH_TOKEN}` : "/mcp";
 
-  const transports = new Map<string, StreamableHTTPServerTransport>();
-
   const httpServer = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
     const url = req.url ?? "/";
 
@@ -128,50 +125,50 @@ async function startHttp() {
       return;
     }
 
-    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+    if (req.method !== "POST") {
+      res.writeHead(405, { Allow: "POST", "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Method not allowed" }));
+      return;
+    }
 
-    if (req.method === "POST") {
+    // Stateless: a fresh server + transport per request, so a restart can never strand a client.
+    // Any mcp-session-id the client sends is simply ignored.
+    try {
       const bodyText = await readBody(req);
       const parsedBody = bodyText ? JSON.parse(bodyText) : undefined;
-      let transport: StreamableHTTPServerTransport;
+      const server = createMcpServer();
+      const transport = new WebStandardStreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
+        enableJsonResponse: true,
+      });
+      await server.connect(transport);
 
-      if (sessionId && transports.has(sessionId)) {
-        transport = transports.get(sessionId)!;
-      } else if (!sessionId) {
-        transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => randomUUID(),
-        });
-        const server = createMcpServer();
-        await server.connect(transport);
-        transport.onclose = () => {
-          if (transport.sessionId) transports.delete(transport.sessionId);
-        };
-      } else {
-        res.writeHead(404, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Session not found. Please reinitialize." }));
-        return;
+      const headers = new Headers();
+      for (const [k, v] of Object.entries(req.headers)) {
+        if (typeof v === "string") headers.set(k, v);
       }
-
-      await transport.handleRequest(req, res, parsedBody);
-      if (transport.sessionId && !transports.has(transport.sessionId)) {
-        transports.set(transport.sessionId, transport);
+      const webReq = new Request(`http://${req.headers.host ?? "localhost"}${url}`, {
+        method: "POST",
+        headers,
+        body: bodyText,
+      });
+      const webRes = await transport.handleRequest(webReq, { parsedBody });
+      const out = Buffer.from(await webRes.arrayBuffer());
+      const outHeaders: Record<string, string> = {};
+      webRes.headers.forEach((v, k) => (outHeaders[k] = v));
+      delete outHeaders["transfer-encoding"];
+      outHeaders["content-length"] = String(out.length);
+      res.writeHead(webRes.status, outHeaders);
+      res.end(out);
+      await transport.close();
+      await server.close();
+    } catch (err: any) {
+      console.error("MCP request error:", err);
+      if (!res.headersSent) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32603, message: "Internal server error" }, id: null }));
       }
-      return;
     }
-
-    if (req.method === "GET" || req.method === "DELETE") {
-      if (!sessionId || !transports.has(sessionId)) {
-        res.writeHead(404, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Session not found. Please reinitialize." }));
-        return;
-      }
-      const transport = transports.get(sessionId)!;
-      await transport.handleRequest(req, res);
-      return;
-    }
-
-    res.writeHead(405, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "Method not allowed" }));
   });
 
   const port = parseInt(process.env.PORT || "3000", 10);
