@@ -119,13 +119,21 @@ async function startHttp() {
       return;
     }
 
+    const hdr = (n: string) => (req.headers[n] ? "y" : "n");
+    const logReq = (rpc: string, status: number) =>
+      console.error(
+        `mcp ${req.method} rpc=${rpc} status=${status} accept=${hdr("accept")} pv=${req.headers["mcp-protocol-version"] ?? "-"} sid=${hdr("mcp-session-id")} ua=${String(req.headers["user-agent"] ?? "-").slice(0, 60)}`
+      );
+
     if (url !== mcpPath) {
+      if (url.startsWith("/mcp")) console.error(`mcp ${req.method} path-mismatch status=404`);
       res.writeHead(404, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Not found" }));
       return;
     }
 
     if (req.method !== "POST") {
+      logReq("-", 405);
       res.writeHead(405, { Allow: "POST", "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Method not allowed" }));
       return;
@@ -160,6 +168,7 @@ async function startHttp() {
       outHeaders["content-length"] = String(out.length);
       res.writeHead(webRes.status, outHeaders);
       res.end(out);
+      logReq(Array.isArray(parsedBody) ? "batch" : String(parsedBody?.method ?? "-"), webRes.status);
       await transport.close();
       await server.close();
     } catch (err: any) {
@@ -174,7 +183,7 @@ async function startHttp() {
   const port = parseInt(process.env.PORT || "3000", 10);
   httpServer.listen(port, "0.0.0.0", () => {
     console.error(`RealNex MCP server running (HTTP) on port ${port}: ${tools.length} tools loaded`);
-    console.error(`MCP endpoint: ${mcpPath}`);
+    console.error(`MCP endpoint: ${MCP_AUTH_TOKEN ? "/mcp/<MCP_AUTH_TOKEN>" : mcpPath}`);
   });
 }
 
