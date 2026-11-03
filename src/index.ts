@@ -41,6 +41,14 @@ function errorHint(op: Operation, status: number, hasBody: boolean): string {
   }
 }
 
+// Known RealNex issue (KRM API: Updating records): a contact update can silently switch off
+// "Use company address". Appended to successful contact updates so it isn't missed.
+const CONTACT_UPDATE_NOTE =
+  "\n\nNote: a 200 only means the request was accepted. Known RealNex issue: updating a contact " +
+  "that uses its company's address turns off 'Use company address' (address goes blank) with no warning. " +
+  "Re-check that setting in KRM for this contact. Notes, custom fields (/personal), investor criteria, " +
+  "history and events are not affected. Read the record back to confirm the changes saved.";
+
 function createMcpServer(): Server {
   const server = new Server(
     { name: "realnex-mcp-server", version: "1.0.0" },
@@ -100,7 +108,8 @@ function createMcpServer(): Server {
           ? JSON.stringify(result.bodyJson, null, 2)
           : result.bodyText ?? "(empty response)";
 
-      return { content: [{ type: "text", text }] };
+      const note = op.toolName === "realnex_put_edit_contact" ? CONTACT_UPDATE_NOTE : "";
+      return { content: [{ type: "text", text: text + note }] };
     } catch (err: any) {
       return {
         isError: true,
