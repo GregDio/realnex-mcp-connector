@@ -114,7 +114,12 @@ function createMcpServer(): Server {
           ? JSON.stringify(result.bodyJson, null, 2)
           : result.bodyText ?? "(empty response)";
 
-      const note = op.toolName === "realnex_put_edit_contact" ? CONTACT_UPDATE_NOTE : "";
+      let note = op.toolName === "realnex_put_edit_contact" ? CONTACT_UPDATE_NOTE : "";
+      if (op.toolName === "realnex_post_contact" && args.body?.companyKey && args.body?.useCompanyAddress !== true) {
+        note =
+          "\n\nNote: this contact was linked to a company without useCompanyAddress: true, so its address is blank in KRM. " +
+          "RealNex needs both companyKey and useCompanyAddress: true on create; updating the contact later does not fix it.";
+      }
       return { content: [{ type: "text", text: text + note }] };
     } catch (err: any) {
       return {
