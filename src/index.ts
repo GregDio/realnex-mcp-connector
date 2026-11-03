@@ -16,6 +16,31 @@ const operations = maxTools < allOperations.length ? allOperations.slice(0, maxT
 const opsByToolName = new Map<string, Operation>(operations.map((op) => [op.toolName, op]));
 const tools = operations.map(operationToTool);
 
+// Likely causes for RealNex errors, from RealNex's "Common Errors" support article.
+function errorHint(op: Operation, status: number, hasBody: boolean): string {
+  const name = op.toolName;
+  switch (status) {
+    case 400:
+      return "Check for a $filter field that doesn't exist, a wrong value type, a value over the field's length limit, a country that isn't a two-letter code, top over 100, or an unquoted GUID in a filter. The response body usually names the field.";
+    case 401:
+      return "The token is missing, wrong or no longer valid. Generate a new one.";
+    case 404:
+      return "The path is wrong or the record doesn't exist. Common case: /contact/{key}/details should be /contact/{key}/personal.";
+    case 415:
+      return "Updates must be sent as application/merge-patch+json.";
+    case 500:
+      if (hasBody) return "";
+      return (
+        "Empty 500s usually mean a request problem that should have been a 400. Common causes: " +
+        (/event/.test(name) ? "an event created without priorityKey (always send it, e.g. 0 for Normal); " : "") +
+        "a link body using objectKey instead of key, or missing type; a custom text value over 100 characters; " +
+        "LastActivity eq null in a filter (use LastActivity/StartDate eq null)."
+      );
+    default:
+      return "";
+  }
+}
+
 function createMcpServer(): Server {
   const server = new Server(
     { name: "realnex-mcp-server", version: "1.0.0" },
@@ -40,13 +65,15 @@ function createMcpServer(): Server {
 
       if (result.status >= 400) {
         const detail = result.bodyJson ?? result.bodyText ?? "";
+        const detailText = typeof detail === "string" ? detail : JSON.stringify(detail, null, 2);
+        const hint = errorHint(op, result.status, detailText.trim().length > 0);
         return {
           isError: true,
           content: [
             {
               type: "text",
-              text: `RealNex API error ${result.status} ${result.statusText}\n${
-                typeof detail === "string" ? detail : JSON.stringify(detail, null, 2)
+              text: `RealNex API error ${result.status} ${result.statusText}\n${detailText}${
+                hint ? `\nHint: ${hint}` : ""
               }`,
             },
           ],

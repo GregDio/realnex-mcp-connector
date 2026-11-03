@@ -179,6 +179,14 @@ matching the RealNex schema for that operation.
 - **Opening the connector URL in a browser shows "Method not allowed"** — expected.
   The endpoint only accepts POST requests from an MCP client; use `/health`
   to check that the service is up.
+- **An empty `500` from RealNex** — usually a request problem that should have
+  been a 400. The most common cause is creating an event without `priorityKey`
+  (RealNex's Swagger lists it as optional, but send it, e.g. `0` for Normal).
+  Other causes: link bodies using `objectKey` instead of `key` (or missing
+  `type`), custom text values over 100 characters, and `LastActivity eq null`
+  in a filter (use `LastActivity/StartDate eq null`). The server appends a
+  hint to these errors.
+- **A `415` on an update** — send updates as `application/merge-patch+json`.
 - **A tool call 404s** — double check the `*Key` GUID you passed; RealNex
   keys are UUIDs.
 
