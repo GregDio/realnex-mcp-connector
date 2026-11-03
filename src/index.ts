@@ -30,7 +30,13 @@ function errorHint(op: Operation, status: number, hasBody: boolean): string {
       return "Updates must be sent as application/merge-patch+json.";
     case 500:
       if (hasBody) return "";
+      if (name === "realnex_post_object_history")
+        return "This one-step endpoint is known to fail. Create the record with realnex_post_history, then link it with realnex_post_history_objects (body: [{key, type}]).";
       return (
+        (/history/.test(name) ? "History subjects are limited to 100 characters. " : "") +
+        (/event_objects|history_objects/.test(name)
+          ? "Link bodies are an array of {key, type}, with type one of Contact, Company, Property, Space, SaleComp, LeaseComp, Project. "
+          : "") +
         "Empty 500s usually mean a request problem that should have been a 400. Common causes: " +
         (/event/.test(name) ? "an event created without priorityKey (always send it, e.g. 0 for Normal); " : "") +
         "a link body using objectKey instead of key, or missing type; a custom text value over 100 characters; " +
